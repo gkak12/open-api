@@ -1,0 +1,79 @@
+buildscript {
+    ext {
+        grpcVersion = '1.66.0'
+        protobufPluginVersion = '0.9.4'
+        protobufVersion = '3.21.12'
+        grpcSpringBootVersion = '5.1.5'
+    }
+}
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.2' // Spring Boot 플러그인
+    id 'io.spring.dependency-management' version '1.1.6' // 의존성 관리 플러그인
+    id 'groovy' // Groovy 지원 (선택사항)
+    id 'idea' // IntelliJ IDEA 지원
+}
+
+group = 'com.open.api'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = '21'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+
+    // Jakarta EE
+    compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+
+    // JSON 데이터 직렬화
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation group: 'com.hubspot.jackson', name: 'jackson-datatype-protobuf', version: '0.9.15'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // MapStruct
+    implementation 'org.mapstruct:mapstruct:1.6.0'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+def mapstructGeneratedDir = file("build/generated/mapstruct")
+
+sourceSets {
+    main {
+        java {
+            srcDir mapstructGeneratedDir
+        }
+    }
+}
+
+tasks.named('compileJava') {
+    options.annotationProcessorGeneratedSourcesDirectory = file("build/generated/sources/annotationProcessor/java/main")
+    options.compilerArgs += [
+            "-Amapstruct.defaultComponentModel=spring"
+    ]
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

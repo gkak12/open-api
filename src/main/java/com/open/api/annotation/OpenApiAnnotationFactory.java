@@ -24,7 +24,13 @@ public class OpenApiAnnotationFactory {
 
         beans.values().forEach(bean -> {
             OpenApiAnnotation openApiAnnotation = bean.getClass().getAnnotation(OpenApiAnnotation.class);
-            openApiServiceMap.put(openApiAnnotation.value(), (OpenApiService) bean);
+            String beanName = openApiAnnotation.value();
+
+            if(openApiServiceMap.containsKey(beanName)) {
+                throw new IllegalArgumentException(beanName + " is already existed.");
+            }
+
+            openApiServiceMap.put(beanName, (OpenApiService) bean);
         });
     }
 

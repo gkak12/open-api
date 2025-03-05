@@ -4,5 +4,5 @@ import com.open.api.domain.dto.OpenApiDto;
 
 public interface OpenApiService {
 
-    String getOpenApi(OpenApiDto openApiDto);
+    String getOpenApi(OpenApiDto openApiDto) throws Exception;
 }

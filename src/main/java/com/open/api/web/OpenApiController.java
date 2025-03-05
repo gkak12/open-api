@@ -23,6 +23,10 @@ public class OpenApiController {
         log.info("OpenApiController getOpenAPI: {}", openApiDto.getApi());
 
         OpenApiService openApiService = openApiAnnotationFactory.getOpenApiService(openApiDto.getApi());
-        openApiService.getOpenApi(openApiDto);
+        try {
+            openApiService.getOpenApi(openApiDto);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

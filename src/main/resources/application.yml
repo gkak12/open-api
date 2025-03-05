@@ -1,9 +1,9 @@
 server:
   port: 8080
 
-key:
+api:
   kakao:
-    key: wwVToKoXeRhYVk+tPlR/30BC0j2CZfBu
+    token: wwVToKoXeRhYVk+tPlR/30BC0j2CZfBu
   naver:
     id: test_id
     secret: AOwwIXzlCegOGnx54M6PAvaZmSQXfZN4

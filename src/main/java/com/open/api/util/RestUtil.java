@@ -4,15 +4,23 @@ import com.open.api.domain.dto.OpenApiDto;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.Executors;
 
 @Slf4j
 public class RestUtil {
+
+    private static final HttpClient CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10)) // 타임아웃 설정
+            .executor(Executors.newFixedThreadPool(10)) // 10개의 스레드 풀 사용
+            .version(HttpClient.Version.HTTP_2) // HTTP/2 사용
+            .build();
 
     public static String getHttpsRestApi(OpenApiDto openApiDto) throws Exception {
         String api = openApiDto.getApi();
@@ -22,64 +30,35 @@ public class RestUtil {
             throw new Exception("WebUtil getHttpsRestApi: apiUrl is empty or null.");
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(api).append("?");
-
+        StringBuilder sb = new StringBuilder(api).append("?");
         Map<String, String> params = openApiDto.getParams();
 
-        for (String paramKey : params.keySet()) {    // parameter 추가
-            String paramValue = params.get(paramKey);
-            sb.append(paramKey).append("=").append(paramValue).append("&");
-
-            log.debug("{}: {}", paramKey, paramValue);
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            sb.append(entry.getKey()).append("=").append(entry.getValue()).append("&");
+            log.debug("{}: {}", entry.getKey(), entry.getValue());
         }
 
         String urlAddr = sb.deleteCharAt(sb.length() - 1).toString();
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(urlAddr))
+                .timeout(Duration.ofSeconds(10))
+                .GET();
 
-        URL url = new URL(urlAddr);
-        HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+        Map<String, String> headers = openApiDto.getHeaders();
+        headers.put("charset", "UTF-8");
+        headers.put("Content-Type", "application/json; charset=UTF-8");
+        headers.put("Accept", "application/json");
 
-        try {
-            conn.setRequestMethod("GET");    // method 설정
+        headers.forEach(requestBuilder::header);
+        HttpRequest request = requestBuilder.build();
 
-            Map<String, String> headers = openApiDto.getHeaders();    // header 추가
+        HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
-            headers.put("charset", "UTF-8");
-            headers.put("Content-Type", "application/json; charset=UTF-8");
-            headers.put("Accept", "application/json");
-
-            for (String haaderKey : headers.keySet()) {
-                String headerValue = headers.get(haaderKey);
-                conn.addRequestProperty(haaderKey, headerValue);
-
-                log.debug("{}: {}", haaderKey, headerValue);
-            }
-
-            conn.connect();    // rest api 접속
-            int statusCode = conn.getResponseCode();
-
-            if (statusCode == 403) {
-                throw new Exception("403 error.");
-            } else if (statusCode == 404) {
-                throw new Exception("404 error.");
-            } else if (statusCode == 405) {
-                throw new Exception("405 error.");
-            } else if (statusCode == 500) {
-                throw new Exception("500 error.");
-            }
-
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                StringBuilder resSb = new StringBuilder();
-                String tmpRes;
-
-                while ((tmpRes = br.readLine()) != null) {
-                    resSb.append(tmpRes).append("\n");
-                }
-
-                return resSb.toString();
-            }
-        } finally {
-            conn.disconnect();
+        int statusCode = response.statusCode();
+        if (statusCode >= 400) {
+            throw new Exception(statusCode + " error.");
         }
+
+        return response.body();
     }
 }
